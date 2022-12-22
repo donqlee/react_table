@@ -164,7 +164,32 @@ function reducer(state, action) {
         ...state,
         users: state.users.filter((user) => user.id !== action.id),
       };
+    case "UPDATE_SUBTOTAL":
+      const subTotal = [];
+      for (let i = 0; i < state.floatingItemSubtotal.length; i += 1) {
+        let sum = 0;
+
+        for (
+          let j = 0;
+          j < state.maintenanceFeeDetail.householdFees.length;
+          j += 1
+        ) {
+          sum +=
+            state.maintenanceFeeDetail.householdFees[j].floatingItemFees[i]
+              .amount;
+        }
+        const tempObj = {
+          name: state.floatingItemSubtotal[i].name,
+          amount: sum,
+        };
+        subTotal.push(tempObj);
+      }
+      return {
+        ...state,
+        floatingItemSubtotal: subTotal,
+      };
     case "ADD_NEWCOL":
+      console.log(state);
       return {
         ...state,
         floatingItemSubtotal: [...state.floatingItemSubtotal, action.addHeader],
@@ -178,6 +203,41 @@ function reducer(state, action) {
           ),
         },
       };
+    case "EDIT_COL":
+      return {
+        ...state,
+        maintenanceFeeDetail: {
+          ...state.maintenanceFeeDetail,
+          householdFees: state.maintenanceFeeDetail.householdFees.map(
+            (row) => ({
+              ...row,
+              floatingItemFees: row.floatingItemFees.map((row) =>
+                row.name === action.editName
+                  ? { name: action.editName, amount: action.editAmount }
+                  : row
+              ),
+            })
+          ),
+        },
+      };
+    case "DELETE_COL":
+      return {
+        ...state,
+        floatingItemSubtotal: [...state.floatingItemSubtotal, action.addHeader],
+
+        maintenanceFeeDetail: {
+          ...state.maintenanceFeeDetail,
+          householdFees: state.maintenanceFeeDetail.householdFees.map(
+            (row) => ({
+              ...row,
+              floatingItemFees: row.floatingItemFees.filter(
+                (row) => row.name === action.deleteName
+              ),
+            })
+          ),
+        },
+      };
+
     default:
       return state;
   }
@@ -186,9 +246,6 @@ function reducer(state, action) {
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [addOn, setAddOn] = useState(false);
-  const [floatingItemSubtotal, setFloatingItemSubtotal] = useState(
-    state.floatingItemSubtotal.reduce((acc, cur) => acc + cur.amount, 0)
-  );
   const add = () => {
     const addHeader = { name: "수도비", amount: 9000 };
     const addRow = { name: "수도비", amount: 4500 };
@@ -198,7 +255,25 @@ function App() {
       addRow,
     });
     setAddOn(!addOn);
-    console.log(state);
+  };
+  const edit = () => {
+    const editName = "소모품";
+    const editAmount = 10000;
+    dispatch({
+      type: "EDIT_COL",
+      editName,
+      editAmount,
+    });
+    dispatch({
+      type: "UPDATE_SUBTOTAL",
+    });
+  };
+  const del = () => {
+    const deleteName = "소모품";
+    dispatch({
+      type: "DELETE_COL",
+      deleteName,
+    });
   };
 
   return (
@@ -273,7 +348,10 @@ function App() {
                     </TableCell>
                   ))}
                 <TableCell align="center" sx={{ minWidth: 110 }}>
-                  {floatingItemSubtotal}
+                  {state.floatingItemSubtotal.reduce(
+                    (acc, cur) => acc + cur.amount,
+                    0
+                  )}
                 </TableCell>
               </TableRow>
               {state &&
@@ -336,10 +414,10 @@ function App() {
       <Button variant="contained" sx={{ m: 10 }} onClick={add}>
         추가
       </Button>
-      <Button variant="contained" sx={{ m: 10 }}>
+      <Button variant="contained" sx={{ m: 10 }} onClick={edit}>
         수정
       </Button>
-      <Button variant="contained" sx={{ m: 10 }}>
+      <Button variant="contained" sx={{ m: 10 }} onClick={del}>
         삭제
       </Button>
     </>
