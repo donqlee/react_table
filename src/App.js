@@ -11,6 +11,7 @@ import {
   TableCell,
   TableHead,
   Button,
+  TextField,
 } from "@mui/material";
 
 const initialState = {
@@ -223,7 +224,9 @@ function reducer(state, action) {
     case "DELETE_COL":
       return {
         ...state,
-        floatingItemSubtotal: [...state.floatingItemSubtotal, action.addHeader],
+        floatingItemSubtotal: state.floatingItemSubtotal.filter(
+          (arr) => arr.name !== action.deleteName
+        ),
 
         maintenanceFeeDetail: {
           ...state.maintenanceFeeDetail,
@@ -231,9 +234,28 @@ function reducer(state, action) {
             (row) => ({
               ...row,
               floatingItemFees: row.floatingItemFees.filter(
-                (row) => row.name === action.deleteName
+                (row) => row.name !== action.deleteName
               ),
             })
+          ),
+        },
+      };
+    case "ADD_BY_USER":
+      return {
+        ...state,
+        maintenanceFeeDetail: {
+          ...state.maintenanceFeeDetail,
+          householdFees: state.maintenanceFeeDetail.householdFees.map((row) =>
+            row.householdId === action.householdId
+              ? {
+                  ...row,
+                  floatingItemFees: row.floatingItemFees.map((result) =>
+                    result.name === action.name
+                      ? { name: action.name, amount: Number(action.value) }
+                      : result
+                  ),
+                }
+              : row
           ),
         },
       };
@@ -246,6 +268,13 @@ function reducer(state, action) {
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [addOn, setAddOn] = useState(false);
+  const [addUser, setAddUser] = useState(false);
+  const [addName, setAddName] = useState("소모품");
+  const [inputs, setInputs] = useState({
+    1000: "",
+    1001: "",
+  });
+
   const add = () => {
     const addHeader = { name: "수도비", amount: 9000 };
     const addRow = { name: "수도비", amount: 4500 };
@@ -273,6 +302,25 @@ function App() {
     dispatch({
       type: "DELETE_COL",
       deleteName,
+    });
+  };
+  const addUserHandler = () => {
+    setAddUser(!addUser);
+    const addHeader = { name: "수도비", amount: 0 };
+  };
+  const addUserOnChange = (value, householdId, name, n) => {
+    setInputs({
+      inputs,
+      [n]: value,
+    });
+    dispatch({
+      type: "ADD_BY_USER",
+      value,
+      householdId,
+      name,
+    });
+    dispatch({
+      type: "UPDATE_SUBTOTAL",
     });
   };
 
@@ -377,12 +425,29 @@ function App() {
                     <TableCell align="center">
                       {row?.householdHoName}호
                     </TableCell>
-                    {row &&
-                      row.floatingItemFees.map((result, index) => (
+                    {row?.floatingItemFees.map((result, index) =>
+                      addUser && result.name === addName ? (
+                        <TableCell align="center" key={result.name}>
+                          <TextField
+                            type="number"
+                            name={row.householdHoName}
+                            value={inputs[row.householdHoName]}
+                            onChange={(e) =>
+                              addUserOnChange(
+                                e.target.value,
+                                row.householdId,
+                                result.name,
+                                e.target.name
+                              )
+                            }
+                          ></TextField>
+                        </TableCell>
+                      ) : (
                         <TableCell align="center" key={result.name}>
                           {result.amount}
                         </TableCell>
-                      ))}
+                      )
+                    )}
                     {addOn ? (
                       <TableCell align="center" sx={{ minWidth: 110 }}>
                         <div>
@@ -413,6 +478,9 @@ function App() {
       </Card>
       <Button variant="contained" sx={{ m: 10 }} onClick={add}>
         추가
+      </Button>
+      <Button variant="contained" sx={{ m: 10 }} onClick={addUserHandler}>
+        직접 입력 추가
       </Button>
       <Button variant="contained" sx={{ m: 10 }} onClick={edit}>
         수정
